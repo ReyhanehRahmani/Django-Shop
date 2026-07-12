@@ -5,3 +5,4 @@ djangorestframework==3.17.1
 Markdown==3.10.2
 pillow==12.2.0
 sqlparse==0.5.5
+drf-yasg==1.21.15
