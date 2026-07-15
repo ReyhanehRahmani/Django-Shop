@@ -1,8 +1,13 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from app_account.models import UserFavorite
-from app_account.api.serializers import UserFavoriteSerializer
+from app_account.api.serializers import UserFavoriteSerializer, UserFavoriteRequestBodySerializer
 from django.contrib.contenttypes.models import ContentType
+from rest_framework.response import Response
+from rest_framework import status
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
 
 @api_view()
 def favorite_list(request):
@@ -15,18 +20,48 @@ def favorite_list(request):
         'result': serializer.data
     })
 
+
+@swagger_auto_schema(
+    method='post',
+    responses={
+        201: 'create favorite',
+        204: 'delete favorite',
+        400: 'invalid number',
+        404: 'content type not found',
+    },
+    request_body=UserFavoriteRequestBodySerializer,
+)
 @api_view(['POST'])
-def favorite_create(request):
+def favorite(request):
     """
     Favorite list View
     """
-    user_id = request.POST.get('user')
-    object_id = request.POST.get('object-id')
-    content_type = request.POST.get('object-type')
-    if content_type == 'product':
-        from app_shop.models import Product
-        content_object = Product.objects.get(id=object_id)
-    UserFavorite.objects.create(
-        user_id=user_id,
-        content_object=content_object
-    )
+    serializer = UserFavoriteRequestBodySerializer(data=request.POST)
+    try:
+        if serializer.is_valid():
+            user_id = serializer.data['user']
+            object_id = serializer.data['object_id']
+            object_type = serializer.data['object_type']
+            product_ct = ContentType.objects.get(model=object_type)
+        # else:
+        #     return somethong
+    except ContentType.DoesNotExist:
+        data = {
+            'message': 'Invalid Content Type!',
+            'status': 'not ok'
+        }
+        return Response(data=data, status=status.HTTP_404_NOT_FOUND)
+    user_favorite = None
+    fields = {
+        'user_id': user_id,
+        'object_id': object_id,
+        'content_type': product_ct
+    }
+    user_favorite, created = UserFavorite.objects.get_or_create(**fields)
+    if created:
+        # create if doe's not exist
+        return Response(data={'status': 'ok'}, status=status.HTTP_201_CREATED)
+    else:
+        # delete if exists
+        user_favorite.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -18,4 +18,6 @@ from django.urls import path
 from app_account.api import views
 
 urlpatterns = [
-    path('favorite-list', views.favorite_list ),]
+    path('favorite-list', views.favorite_list ),
+    path('favorite', views.favorite ),]
+
