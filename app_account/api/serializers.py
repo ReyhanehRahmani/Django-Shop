@@ -9,6 +9,5 @@ class UserFavoriteSerializer(serializers.ModelSerializer):
 
 
 class UserFavoriteRequestBodySerializer(serializers.Serializer):
-    user = serializers.IntegerField()
     object_id = serializers.IntegerField()
     object_type = serializers.CharField()
