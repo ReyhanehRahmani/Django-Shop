@@ -1,5 +1,6 @@
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from app_account.models import UserFavorite
 from app_account.api.serializers import UserFavoriteSerializer, UserFavoriteRequestBodySerializer
 from django.contrib.contenttypes.models import ContentType
@@ -7,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 @api_view()
 def favorite_list(request):
@@ -32,14 +33,16 @@ def favorite_list(request):
     request_body=UserFavoriteRequestBodySerializer,
 )
 @api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def favorite(request):
     """
     Favorite list View
     """
     serializer = UserFavoriteRequestBodySerializer(data=request.POST)
+    user_id = request.user.id
     try:
         if serializer.is_valid():
-            user_id = serializer.data['user']
             object_id = serializer.data['object_id']
             object_type = serializer.data['object_type']
             product_ct = ContentType.objects.get(model=object_type)
