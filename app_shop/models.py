@@ -1,4 +1,6 @@
 from django.db import models
+from django.contrib.auth.models import User
+
 
 class SpecialOffer(models.Model):
     image = models.ImageField()
@@ -27,3 +29,26 @@ class ProductColor(models.Model):
 
     def __str__(self):
         return f'{self.product.title} {self.name}'
+    
+class ProductImage(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='products/')
+    is_main = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Image for {self.product.name}"
+    
+class ProductFeature(models.Model):
+    product = models.ForeignKey(
+        Product, 
+        on_delete=models.CASCADE, 
+        related_name='features'
+    )
+    key = models.CharField(max_length=50)
+    value = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.key}: {self.value}"
+
+
+
