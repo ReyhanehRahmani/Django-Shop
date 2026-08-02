@@ -23,4 +23,5 @@ urlpatterns = [
     path('product-delete/<int:product_id>', views.product_delete ),
     path('product-update/<int:product_id>', views.product_update ),
     path('product/<int:product_id>', views.product_detail ),
+    path('products/', views.ProductListView.as_view())
 ]

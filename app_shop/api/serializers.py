@@ -15,24 +15,20 @@ class SpecialOfferSerializer(serializers.ModelSerializer):
         exclude = ('datetime', 'id')
 
 
-class ProductColorSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductColor
-        fields = '__all__'
-
-
-class ProductSerializer(serializers.ModelSerializer):
-    colors = serializers.SerializerMethodField()
-
-    def get_colors(self, obj):
-        print("Called")
-        qs = obj.ProductColor_set.all()
-        serializer = ProductColorSerializer(qs, many=True)
-        return serializer.data
+class ProductSerializer(serializers.ModelSerializer): 
     
-    class Meta:
-        model = Product
+    colors = serializers.SerializerMethodField() 
+    
+    def get_colors(self, obj): 
+        print("Called") 
+        qs = obj.productcolor_set.all()
+        serializer = ProductColorSerializer(qs, many=True) 
+        return serializer.data 
+    
+    class Meta: 
+        model = Product 
         fields = '__all__'
+
 
 class ProductColorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,5 +55,3 @@ class ProductRequestBodySerializer(serializers.ModelSerializer):
             "colors",
             "features",
         )
-
-    

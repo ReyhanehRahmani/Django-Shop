@@ -36,7 +36,7 @@ class ProductImage(models.Model):
     is_main = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"Image for {self.product.name}"
+        return f"Image for {self.product.title}"
     
 class ProductFeature(models.Model):
     product = models.ForeignKey(

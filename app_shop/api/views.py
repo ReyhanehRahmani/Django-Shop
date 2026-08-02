@@ -8,8 +8,10 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from app_shop.models import SpecialOffer , Product , ProductColor , ProductFeature
 from rest_framework.decorators import api_view
 from app_shop.api.serializers import SpecialOfferSerializer ,ProductSerializer , ProductColorSerializer , ProductRequestBodySerializer
-    
-
+from rest_framework.generics import ListAPIView 
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Q
 @api_view()
 def special_offer_list(request):
 
@@ -189,3 +191,20 @@ def product_update(request, product_id):
         },
         status=status.HTTP_200_OK
     )
+
+class ProductListView(ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    pagination_class = PageNumberPagination
+    filter_backends = [DjangoFilterBackend]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        title = self.request.GET.get('title')
+        max_price = self.request.GET.get('max_price')
+        min_price = self.request.GET.get('min_price')
+        if max_price and min_price:
+            qs = qs.filter(productcolor__price__gte=min_price, productcolor__price__lte=max_price)
+        return qs.filter(
+            Q(title__contains=title) | Q(sub_title__icontains=title)
+        ) if title else qs
