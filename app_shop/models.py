@@ -42,7 +42,6 @@ class ProductFeature(models.Model):
     product = models.ForeignKey(
         Product, 
         on_delete=models.CASCADE, 
-        related_name='features'
     )
     key = models.CharField(max_length=50)
     value = models.CharField(max_length=100)
@@ -50,5 +49,27 @@ class ProductFeature(models.Model):
     def __str__(self):
         return f"{self.key}: {self.value}"
 
+class Comment(models.Model):
+    product = models.ForeignKey(
+        Product, 
+        on_delete=models.CASCADE,
 
+    )
+
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+    )
+
+    text = models.TextField()
+
+    rating = models.PositiveSmallIntegerField(
+        choices=[(i, i) for i in range(1, 6)]
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Comment by {self.user} on {self.product}"
 
