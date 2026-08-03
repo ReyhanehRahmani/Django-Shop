@@ -4,7 +4,6 @@ from rest_framework.permissions import IsAuthenticated
 from app_account.models import UserFavorite
 from app_account.api.serializers import UserFavoriteSerializer, UserFavoriteRequestBodySerializer
 from django.contrib.contenttypes.models import ContentType
-from rest_framework.response import Response
 from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
