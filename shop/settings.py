@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'django_filters',
     'app_account',
     'app_shop',
-    'app_order'
+    'app_order',
 ]
 
 REST_FRAMEWORK = {
@@ -55,7 +55,10 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
-    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
     
 }
 

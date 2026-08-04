@@ -9,6 +9,7 @@ class Cart(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True)
     object_id = models.PositiveBigIntegerField(null=True)
     content_object = GenericForeignKey("content_type", "object_id")
+    quantity = models.PositiveIntegerField(default=1)
 
     def __str__(self):
-        return f'{self.user} {self.content_type} {self.object_id}'
+        return f'{self.user} {self.content_type} {self.object_id} x{self.quantity}'
