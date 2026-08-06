@@ -1,14 +1,22 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from app_account.models import UserFavorite
-from app_account.api.serializers import UserFavoriteSerializer, UserFavoriteRequestBodySerializer
+from app_account.models import UserFavorite , UserProfile
 from django.contrib.contenttypes.models import ContentType
+from rest_framework.generics import RetrieveAPIView
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from app_account.api.serializers import (
+    UserFavoriteSerializer, 
+    UserFavoriteRequestBodySerializer,
+    UserProfileDetailSerializer,
+    UserProfileCreateUpdateSerializer
+)
+from rest_framework.generics import RetrieveAPIView, CreateAPIView, UpdateAPIView, DestroyAPIView
 
 @api_view()
 def favorite_list(request):
@@ -68,3 +76,70 @@ def favorite(request):
         # delete if exists
         user_favorite.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+class UserProfileDetailView(RetrieveAPIView):
+    """
+    ویو برای نمایش اطلاعات کامل پروفایل کاربر جاری
+    شامل: اطلاعات پایه، آدرس‌ها، علاقه‌مندی‌ها و سفارش‌ها
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserProfileDetailSerializer
+
+    def get_object(self):
+
+        user = self.request.user
+        print(f"User: {user.username}, ID: {user.id}")
+        
+        try:
+            return UserProfile.objects.get(user=self.request.user)
+        except UserProfile.DoesNotExist:
+            raise NotFound('پروفایل کاربر یافت نشد. لطفاً ابتدا پروفایل خود را تکمیل کنید.')
+        
+class UserProfileCreateView(CreateAPIView):
+    """ایجاد پروفایل برای کاربر جاری"""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserProfileCreateUpdateSerializer
+
+    def perform_create(self, serializer):
+        # بررسی اینکه کاربر قبلاً پروفایل نداشته باشه
+        if UserProfile.objects.filter(user=self.request.user).exists():
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError('کاربر قبلاً پروفایل دارد. برای ویرایش از API update استفاده کنید.')
+        
+        serializer.save(user=self.request.user)
+
+
+class UserProfileUpdateView(UpdateAPIView):
+    """ویرایش پروفایل کاربر جاری"""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserProfileCreateUpdateSerializer
+
+    def get_object(self):
+        try:
+            return UserProfile.objects.get(user=self.request.user)
+        except UserProfile.DoesNotExist:
+            raise NotFound('پروفایل کاربر یافت نشد. لطفاً ابتدا پروفایل خود را ایجاد کنید.')
+
+
+class UserProfileDeleteView(DestroyAPIView):
+    """حذف پروفایل کاربر جاری"""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        try:
+            return UserProfile.objects.get(user=self.request.user)
+        except UserProfile.DoesNotExist:
+            raise NotFound('پروفایل کاربر یافت نشد.')
+
+    def destroy(self, request, *args, **kwargs):
+        profile = self.get_object()
+        profile.delete()
+        return Response(
+            {'status': 'ok', 'message': 'پروفایل با موفقیت حذف شد.'},
+            status=status.HTTP_204_NO_CONTENT
+        )

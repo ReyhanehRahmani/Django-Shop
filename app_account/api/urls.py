@@ -19,5 +19,9 @@ from app_account.api import views
 
 urlpatterns = [
     path('favorite-list', views.favorite_list ),
-    path('favorite', views.favorite ),]
+    path('favorite', views.favorite ),
+    path('profile/', views.UserProfileDetailView.as_view(), name='profile-detail'),
+    path('profile/create/', views.UserProfileCreateView.as_view(), name='profile-create'),
+    path('profile/update/', views.UserProfileUpdateView.as_view(), name='profile-update'),
+    path('profile/delete/', views.UserProfileDeleteView.as_view(), name='profile-delete'),]
 
