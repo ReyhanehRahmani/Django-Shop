@@ -106,7 +106,6 @@ class OrderListView(ListAPIView):
     serializer_class = OrderListSerializer
     
     def get_queryset(self):
-        from django.contrib.contenttypes.models import ContentType
         
         profile_ct = ContentType.objects.get_for_model(UserProfile)
         
@@ -123,13 +122,12 @@ class OrderListView(ListAPIView):
 
 
 class OrderDetailView(RetrieveAPIView):
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = OrderSerializer
     
     def get_queryset(self):
-        from app_account.models import UserProfile
-        from django.contrib.contenttypes.models import ContentType
         
         try:
             profile = UserProfile.objects.get(user=self.request.user)
@@ -150,7 +148,6 @@ class OrderDetailView(RetrieveAPIView):
         try:
             index = int(index)
         except (ValueError, TypeError):
-            from rest_framework.exceptions import NotFound
             raise NotFound('شماره سفارش نامعتبر است.')
         
         zero_based_index = index - 1
@@ -158,5 +155,4 @@ class OrderDetailView(RetrieveAPIView):
         try:
             return self.get_queryset()[zero_based_index]
         except IndexError:
-            from rest_framework.exceptions import NotFound
             raise NotFound(f'سفارش شماره {index} یافت نشد.')
