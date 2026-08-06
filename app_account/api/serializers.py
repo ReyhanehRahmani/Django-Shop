@@ -5,11 +5,28 @@ from app_order.models import Order, Cart
 
 
 class AddressSerializer(serializers.ModelSerializer):
-    
+    """سریالایزر آدرس برای نمایش و ویرایش"""
     class Meta:
         model = Address
         fields = ['id', 'city', 'address', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
+
+class AddressCreateUpdateSerializer(serializers.ModelSerializer):
+    """سریالایزر ایجاد و ویرایش آدرس"""
+    class Meta:
+        model = Address
+        fields = ['city', 'address']
+    
+    def validate_city(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("وارد کردن شهر الزامی است.")
+        return value.strip()
+    
+    def validate_address(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("وارد کردن آدرس الزامی است.")
+        return value.strip()
 
 class FavoriteProductColorSerializer(serializers.ModelSerializer):
     

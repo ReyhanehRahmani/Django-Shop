@@ -1,7 +1,7 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from app_account.models import UserFavorite , UserProfile
+from app_account.models import UserFavorite , UserProfile , Address
 from django.contrib.contenttypes.models import ContentType
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.exceptions import NotFound
@@ -14,9 +14,10 @@ from app_account.api.serializers import (
     UserFavoriteSerializer, 
     UserFavoriteRequestBodySerializer,
     UserProfileDetailSerializer,
-    UserProfileCreateUpdateSerializer
+    UserProfileCreateUpdateSerializer,
+    AddressSerializer, AddressCreateUpdateSerializer
 )
-from rest_framework.generics import RetrieveAPIView, CreateAPIView, UpdateAPIView, DestroyAPIView
+from rest_framework.generics import RetrieveAPIView, CreateAPIView, UpdateAPIView, DestroyAPIView , ListCreateAPIView , RetrieveUpdateDestroyAPIView
 
 @api_view()
 def favorite_list(request):
@@ -143,3 +144,56 @@ class UserProfileDeleteView(DestroyAPIView):
             {'status': 'ok', 'message': 'پروفایل با موفقیت حذف شد.'},
             status=status.HTTP_204_NO_CONTENT
         )
+    
+class AddressListView(ListCreateAPIView):
+    """
+    لیست آدرس‌های کاربر جاری و ایجاد آدرس جدید
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return AddressCreateUpdateSerializer
+        return AddressSerializer
+    
+    def get_queryset(self):
+
+        return Address.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+
+        serializer.save(user=self.request.user)
+
+
+class AddressDetailView(RetrieveUpdateDestroyAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return AddressCreateUpdateSerializer
+        return AddressSerializer
+    
+    def get_queryset(self):
+
+        return Address.objects.filter(user=self.request.user).order_by('id')
+    
+    def get_object(self):
+
+        index = self.kwargs.get('pk')
+        
+        try:
+
+            index = int(index)
+        except (ValueError, TypeError):
+            raise NotFound('شماره آدرس نامعتبر است.')
+        
+
+        zero_based_index = index - 1
+        
+        try:
+
+            return self.get_queryset()[zero_based_index]
+        except IndexError:
+            raise NotFound(f'آدرس شماره {index} یافت نشد.')
