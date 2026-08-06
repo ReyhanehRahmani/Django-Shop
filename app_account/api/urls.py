@@ -25,5 +25,10 @@ urlpatterns = [
     path('profile/update/', views.UserProfileUpdateView.as_view(), name='profile-update'),
     path('profile/delete/', views.UserProfileDeleteView.as_view(), name='profile-delete'),
     path('addresses/', views.AddressListView.as_view(), name='address-list-create'),
-    path('addresses/<int:pk>/', views.AddressDetailView.as_view(), name='address-detail'),]
+    path('addresses/<int:pk>/', views.AddressDetailView.as_view(), name='address-detail'),
+    # ===== Register APIs =====
+    path('send-otp/', views.send_otp, name='send-otp'),
+    path('verify-otp/', views.verify_otp, name='verify-otp'),
+    path('resend-otp/', views.resend_otp, name='resend-otp'),
+    ]
 

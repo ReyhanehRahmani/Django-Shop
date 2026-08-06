@@ -23,4 +23,9 @@ urlpatterns = [
     path('product-delete/<int:product_id>', views.product_delete ),
     path('product-update/<int:product_id>', views.product_update ),
     path('product/<int:product_id>', views.product_detail ),
+    path('products/', views.ProductListView.as_view()),
+    path('product-comment-list/<int:product_id>', views.product_comment_list),
+    path('product/<int:product_id>/comment-create', views.CommentCreateView.as_view()),
+    path('comment/<int:comment_id>', views.CommentUpdateDeleteView.as_view()),
+
 ]

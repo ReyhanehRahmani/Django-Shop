@@ -2,6 +2,9 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+import random
+from django.utils import timezone
+from datetime import timedelta
 
 
 class UserFavorite(models.Model):
@@ -74,3 +77,36 @@ class UserProfile(models.Model):
     @property
     def favorites_count(self):
         return self.favorites.count()
+    
+
+class PhoneOTP(models.Model):
+
+    phone_number = models.CharField(max_length=15, unique=True)
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_verified = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return f"{self.phone_number} - {self.otp_code}"
+    
+    def is_expired(self):
+
+        expiration_time = self.created_at + timedelta(minutes=1)
+        return timezone.now() > expiration_time
+    
+    @classmethod
+    def generate_otp(cls):
+
+        return str(random.randint(100000, 999999))
+    
+    @classmethod
+    def create_otp(cls, phone_number):
+
+        otp_code = cls.generate_otp()
+
+        cls.objects.filter(phone_number=phone_number).delete()
+
+        return cls.objects.create(
+            phone_number=phone_number,
+            otp_code=otp_code
+        )

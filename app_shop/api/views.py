@@ -1,14 +1,20 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from app_shop.models import SpecialOffer , Product , ProductColor , ProductFeature
+from rest_framework import generics, mixins, permissions , status
+from rest_framework.exceptions import PermissionDenied, NotFound
+from app_shop.models import SpecialOffer , Product , ProductColor , ProductFeature , Comment , ProductImage
 from rest_framework.decorators import api_view
-from app_shop.api.serializers import SpecialOfferSerializer ,ProductSerializer , ProductColorSerializer , ProductRequestBodySerializer
-    
+from app_shop.api.serializers import SpecialOfferSerializer ,ProductSerializer , ProductColorSerializer , ProductRequestBodySerializer , CommentSerializer
+from rest_framework.generics import ListAPIView 
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Q
+from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import AllowAny
 
 @api_view()
 def special_offer_list(request):
@@ -28,11 +34,16 @@ def product_detail(request, product_id):
     """
     Product Detail View
     """
-    qs = Product.objects.get(id=product_id)
+    qs = Product.objects.prefetch_related(
+        'productcolor_set',
+        'productfeature_set',
+        'comment_set',
+        'images'
+    ).get(id=product_id)
+    
     serializer = ProductSerializer(qs)
     return Response({
         'result': serializer.data})
-
 
 @swagger_auto_schema(
     method='post',
@@ -45,8 +56,8 @@ def product_detail(request, product_id):
     request_body=ProductRequestBodySerializer,)
 
 @api_view(["POST"])
-# @authentication_classes([JWTAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAdminUser])
 def product_create(request):
     """
     Create Product
@@ -101,9 +112,10 @@ def product_create(request):
         status=status.HTTP_201_CREATED
     )
 
+
 @api_view(["DELETE"])
-# @authentication_classes([JWTAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAdminUser])
 def product_delete(request, product_id):
     """
     Delete a product
@@ -131,8 +143,8 @@ def product_delete(request, product_id):
     )
 
 @api_view(["PUT"])
-# @authentication_classes([JWTAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAdminUser])
 def product_update(request, product_id):
     """
     Update Product
@@ -189,3 +201,73 @@ def product_update(request, product_id):
         },
         status=status.HTTP_200_OK
     )
+
+
+class ProductListView(ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    pagination_class = PageNumberPagination
+    filter_backends = [DjangoFilterBackend]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
+    def get_queryset(self):
+        qs = super().get_queryset()
+        title = self.request.GET.get('title')
+        max_price = self.request.GET.get('max_price')
+        min_price = self.request.GET.get('min_price')
+        if max_price and min_price:
+            qs = qs.filter(productcolor__price__gte=min_price, productcolor__price__lte=max_price)
+        return qs.filter(
+            Q(title__contains=title) | Q(sub_title__icontains=title)
+        ) if title else qs
+
+@api_view()
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def product_comment_list(request, product_id):
+    """
+    Get all comments for a product
+    """
+    qs = Comment.objects.filter(product=product_id)
+    serializer = CommentSerializer(qs, many=True)
+    return Response({
+        'result': serializer.data})
+
+
+class CommentCreateView(generics.CreateAPIView):
+    
+    serializer_class = CommentSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        product_id = self.kwargs['product_id']
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            raise NotFound('Product not found.')
+        serializer.save(user=self.request.user, product=product)
+
+
+class CommentUpdateDeleteView(mixins.UpdateModelMixin,mixins.DestroyModelMixin,generics.GenericAPIView):
+
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    lookup_url_kwarg = 'comment_id'
+
+    def get_object(self):
+        obj = super().get_object()
+        if obj.user != self.request.user:
+            raise PermissionDenied('You are not allowed to modify this comment.')
+        return obj
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def patch(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)

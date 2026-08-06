@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from app_account.models import UserProfile, Address, UserFavorite
+from django.contrib.auth.models import User
+from app_account.models import UserProfile, Address, UserFavorite , PhoneOTP
 from app_shop.models import ProductColor
 from app_order.models import Order, Cart
 
@@ -27,6 +28,7 @@ class AddressCreateUpdateSerializer(serializers.ModelSerializer):
         if not value.strip():
             raise serializers.ValidationError("وارد کردن آدرس الزامی است.")
         return value.strip()
+
 
 class FavoriteProductColorSerializer(serializers.ModelSerializer):
     
@@ -161,7 +163,6 @@ class UserProfileCreateUpdateSerializer(serializers.ModelSerializer):
         return value
 
 
-
 class UserFavoriteSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -173,3 +174,23 @@ class UserFavoriteRequestBodySerializer(serializers.Serializer):
 
     object_id = serializers.IntegerField()
     object_type = serializers.CharField()
+
+
+class PhoneNumberSerializer(serializers.Serializer):
+    """سریالایزر دریافت شماره تلفن برای ارسال کد"""
+    phone_number = serializers.CharField(max_length=15)
+    
+    def validate_phone_number(self, value):
+        """اعتبارسنجی شماره تلفن"""
+        if not value.isdigit():
+            raise serializers.ValidationError("شماره تلفن باید فقط شامل اعداد باشد.")
+        if len(value) < 10:
+            raise serializers.ValidationError("شماره تلفن معتبر نیست.")
+        return value
+
+
+class VerifyOTPSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(max_length=15)
+    otp_code = serializers.CharField(max_length=6)
+    username = serializers.CharField(max_length=150)
+    password = serializers.CharField(max_length=128)
