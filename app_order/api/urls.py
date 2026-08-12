@@ -21,4 +21,7 @@ urlpatterns = [
     path('add-to-cart/', views.AddToCartView.as_view()),
     path('remove-from-cart/<int:pk>', views.RemoveFromCartView.as_view()),
     path('cart-detail/', views.CartDetailView.as_view()),
+    path('orders/', views.OrderListView.as_view(), name='order-list'),
+    path('orders/<int:pk>/', views.OrderDetailView.as_view(), name='order-detail'),
+    path('order/<int:order_id>/pay/', views.PaymentSimulateView.as_view(), name='payment-simulate'),
 ]

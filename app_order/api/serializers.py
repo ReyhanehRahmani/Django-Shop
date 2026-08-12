@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from app_shop.models import ProductColor
-from app_order.models import Cart
+from app_order.models import Cart , Order
 
 
 class CartItemSerializer(serializers.ModelSerializer):
@@ -88,3 +88,54 @@ class AddToCartSerializer(serializers.Serializer):
         if not ProductColor.objects.filter(id=value).exists():
             raise serializers.ValidationError("رنگ محصول مورد نظر یافت نشد.")
         return value
+    
+class OrderListSerializer(serializers.ModelSerializer):
+
+    profile_name = serializers.SerializerMethodField()
+    address_full = serializers.SerializerMethodField()
+    total_amount = serializers.SerializerMethodField()
+    items_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Order
+        fields = [
+            'id',
+            'status',
+            'payment_status',
+            'paid_amount',
+            'total_amount',
+            'items_count',
+            'created_at',
+            'paid_at',
+            'profile_name',
+            'address_full'
+        ]
+    
+    def get_profile_name(self, obj):
+
+        if obj.profile:
+            try:
+                return f"{obj.profile.name} {obj.profile.last_name}"
+            except AttributeError:
+                return "کاربر ناشناس"
+        return "کاربر ناشناس"
+    
+    def get_address_full(self, obj):
+
+        if obj.address:
+            try:
+                return f"{obj.address.city} - {obj.address.address}"
+            except AttributeError:
+                return "آدرسی ثبت نشده"
+        return "آدرسی ثبت نشده"
+    
+    def get_total_amount(self, obj):
+        cart_items = Cart.objects.filter(id=obj.cart.id)
+        total = 0
+        for item in cart_items:
+            price = item.content_object.price if item.content_object else 0
+            total += price * item.quantity
+        return total
+    
+    def get_items_count(self, obj):
+        return Cart.objects.filter(id=obj.cart.id).count()

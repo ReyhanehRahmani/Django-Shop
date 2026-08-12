@@ -13,7 +13,8 @@ from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
-
+from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import AllowAny
 
 @api_view()
 def special_offer_list(request):
@@ -55,8 +56,8 @@ def product_detail(request, product_id):
     request_body=ProductRequestBodySerializer,)
 
 @api_view(["POST"])
-# @authentication_classes([JWTAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAdminUser])
 def product_create(request):
     """
     Create Product
@@ -106,14 +107,16 @@ def product_create(request):
     return Response(
         {
             "status": "ok",
-            "message": "Product created successfully."
+            "message": "Product created successfully.",
+            "id": product.id 
         },
         status=status.HTTP_201_CREATED
     )
 
+
 @api_view(["DELETE"])
-# @authentication_classes([JWTAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAdminUser])
 def product_delete(request, product_id):
     """
     Delete a product
@@ -141,8 +144,8 @@ def product_delete(request, product_id):
     )
 
 @api_view(["PUT"])
-# @authentication_classes([JWTAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAdminUser])
 def product_update(request, product_id):
     """
     Update Product
@@ -206,7 +209,8 @@ class ProductListView(ListAPIView):
     serializer_class = ProductSerializer
     pagination_class = PageNumberPagination
     filter_backends = [DjangoFilterBackend]
-
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
     def get_queryset(self):
         qs = super().get_queryset()
         title = self.request.GET.get('title')
@@ -219,8 +223,8 @@ class ProductListView(ListAPIView):
         ) if title else qs
 
 @api_view()
-# @authentication_classes([JWTAuthentication])
-# @permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def product_comment_list(request, product_id):
     """
     Get all comments for a product
@@ -234,8 +238,8 @@ def product_comment_list(request, product_id):
 class CommentCreateView(generics.CreateAPIView):
     
     serializer_class = CommentSerializer
-    # authentication_classes = [JWTAuthentication]
-    # permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         product_id = self.kwargs['product_id']
@@ -251,7 +255,7 @@ class CommentUpdateDeleteView(mixins.UpdateModelMixin,mixins.DestroyModelMixin,g
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     lookup_url_kwarg = 'comment_id'
 
     def get_object(self):
