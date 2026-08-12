@@ -101,10 +101,12 @@ class OrderListSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'status',
+            'payment_status',
             'paid_amount',
             'total_amount',
             'items_count',
             'created_at',
+            'paid_at',
             'profile_name',
             'address_full'
         ]

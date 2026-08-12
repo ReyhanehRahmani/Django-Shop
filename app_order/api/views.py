@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +12,8 @@ from app_account.api.serializers import OrderSerializer
 from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView
 from rest_framework.exceptions import NotFound
 from app_account.models import UserProfile
+import random
+        
 
 class AddToCartView(generics.CreateAPIView):
 
@@ -156,3 +159,69 @@ class OrderDetailView(RetrieveAPIView):
             return self.get_queryset()[zero_based_index]
         except IndexError:
             raise NotFound(f'سفارش شماره {index} یافت نشد.')
+        
+class PaymentSimulateView(APIView):
+    """
+    شبیه‌سازی پرداخت)
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, order_id):
+
+        try:
+            order = Order.objects.get(id=order_id)
+        except Order.DoesNotExist:
+            return Response({
+                'status': 'not ok',
+                'message': 'سفارش یافت نشد.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            profile = UserProfile.objects.get(user=request.user)
+            profile_ct = ContentType.objects.get_for_model(profile)
+            
+            if order.profile_type != profile_ct or order.profile_id != profile.id:
+                return Response({
+                    'status': 'not ok',
+                    'message': 'شما به این سفارش دسترسی ندارید.'
+                }, status=status.HTTP_403_FORBIDDEN)
+        except UserProfile.DoesNotExist:
+            return Response({
+                'status': 'not ok',
+                'message': 'پروفایل یافت نشد.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        if order.payment_status == 'paid':
+            return Response({
+                'status': 'not ok',
+                'message': 'این سفارش قبلاً پرداخت شده است.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        is_successful = random.random() < 0.9
+
+        if is_successful:
+            reference = f'PAY-{order.id}-{int(timezone.now().timestamp())}'
+            order.mark_as_paid(reference)
+            
+            return Response({
+                'status': 'ok',
+                'message': 'پرداخت با موفقیت انجام شد.',
+                'data': {
+                    'order_id': order.id,
+                    'payment_status': order.payment_status,
+                    'payment_reference': order.payment_reference,
+                    'paid_amount': order.paid_amount,
+                    'paid_at': order.paid_at,
+                    'order_status': order.status
+                }
+            }, status=status.HTTP_200_OK)
+        else:
+            order.payment_status = 'failed'
+            order.save()
+            
+            return Response({
+                'status': 'not ok',
+                'message': 'پرداخت ناموفق بود. لطفاً مجدداً تلاش کنید.',
+                'payment_status': 'failed'
+            }, status=status.HTTP_400_BAD_REQUEST)

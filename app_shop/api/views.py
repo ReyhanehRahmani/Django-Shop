@@ -107,7 +107,8 @@ def product_create(request):
     return Response(
         {
             "status": "ok",
-            "message": "Product created successfully."
+            "message": "Product created successfully.",
+            "id": product.id 
         },
         status=status.HTTP_201_CREATED
     )

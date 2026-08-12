@@ -76,8 +76,20 @@ class OrderSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = ['id', 'status', 'paid_amount', 'created_at', 'profile_name', 'address_full', 'cart_items', 'total_amount']
-    
+        fields = [
+            'id',
+            'status',
+            'payment_status',
+            'paid_amount',
+            'payment_reference',
+            'paid_at',
+            'created_at',
+            'profile_name',
+            'address_full',
+            'cart_items',
+            'total_amount'
+        ]
+        
     def get_cart_items(self, obj):
         cart_items = Cart.objects.filter(id=obj.cart.id)
         return OrderCartItemSerializer(cart_items, many=True).data

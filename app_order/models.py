@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-
+from django.utils import timezone
 
 class Cart(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
@@ -53,7 +53,28 @@ class Order(models.Model):
         default=STATUS_REGISTERED
     )
 
+    payment_status = models.CharField(
+    max_length=20,
+    choices=[
+        ('pending', 'در انتظار پرداخت'),
+        ('paid', 'پرداخت شده'),
+        ('failed', 'پرداخت ناموفق'),
+    ],
+    default='pending'
+    )
+
+    payment_reference = models.CharField(max_length=100, blank=True, null=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"سفارش {self.id}"
+    
+    def mark_as_paid(self, reference=None):
+        self.payment_status = 'paid'
+        self.payment_reference = reference or f'PAY-{self.id}-{int(timezone.now().timestamp())}'
+        self.paid_at = timezone.now()
+        self.status = self.STATUS_PREPARING
+        self.save()

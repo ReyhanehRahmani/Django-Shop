@@ -24,6 +24,8 @@ from app_account.api.serializers import (
     UserProfileCreateUpdateSerializer,
 )
 from rest_framework.generics import RetrieveAPIView, CreateAPIView, UpdateAPIView, DestroyAPIView , ListCreateAPIView , RetrieveUpdateDestroyAPIView
+from rest_framework.views import APIView
+import random
 
 @api_view()
 @authentication_classes([JWTAuthentication])
@@ -246,7 +248,7 @@ def resend_otp(request):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         otp_obj = PhoneOTP.create_otp(phone_number)
-        print(f"📱 کد جدید برای {phone_number}: {otp_obj.otp_code}")
+        print(f"{phone_number}: {otp_obj.otp_code}")
         
         return Response({
             'status': 'ok',
@@ -274,7 +276,6 @@ def verify_otp(request):
     phone_number = serializer.validated_data['phone_number']
     otp_code = serializer.validated_data['otp_code']
     
-    # ۱. پیدا کردن کد
     try:
         otp_obj = PhoneOTP.objects.get(phone_number=phone_number)
     except PhoneOTP.DoesNotExist:
@@ -283,25 +284,21 @@ def verify_otp(request):
             'message': 'شماره تلفن یافت نشد.'
         }, status=status.HTTP_404_NOT_FOUND)
     
-    # ۲. بررسی انقضا
     if otp_obj.is_expired():
         return Response({
             'status': 'not ok',
             'message': 'کد تایید منقضی شده است.'
         }, status=status.HTTP_400_BAD_REQUEST)
     
-    # ۳. بررسی صحت کد
     if otp_obj.otp_code != otp_code:
         return Response({
             'status': 'not ok',
             'message': 'کد تایید اشتباه است.'
         }, status=status.HTTP_400_BAD_REQUEST)
     
-    # ۴. تایید شماره تلفن
     otp_obj.is_verified = True
     otp_obj.save()
     
-    # ۵. ساخت کاربر (با شماره تلفن به عنوان username موقت)
     username = request.data.get('username')
     password = request.data.get('password')
     
@@ -323,7 +320,6 @@ def verify_otp(request):
         email=request.data.get('email', '')
     )
     
-    # ۶. ساخت توکن JWT
     refresh = RefreshToken.for_user(user)
     
     return Response({
