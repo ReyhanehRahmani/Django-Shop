@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خوش آمدید</title>
+    <style>
+        /* استایل‌های پایه */
+        body {
+            font-family: 'Tahoma', 'Arial', sans-serif;
+            background-color: #f4f7fc;
+            margin: 0;
+            padding: 0;
+            direction: rtl;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin: 0;
+            font-weight: 700;
+        }
+        .content {
+            padding: 40px 30px;
+            color: #333;
+            line-height: 1.8;
+        }
+        .content p {
+            font-size: 16px;
+            margin: 16px 0;
+        }
+        .btn {
+            display: inline-block;
+            background: #667eea;
+            color: white !important;
+            padding: 14px 40px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 20px 0;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #5a67d8;
+        }
+        .footer {
+            background: #f8fafc;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #888;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- Header -->
+        <div class="header">
+            <h1>🛍️ به فروشگاه ما خوش آمدید!</h1>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <p><strong>سلام {{ user_name }} عزیز،</strong></p>
+
+            <p>
+                از ثبت‌نام شما در <strong>فروشگاه جنگویی</strong> خوشحالیم! 
+                ما اینجا هستیم تا بهترین تجربه‌ی خرید آنلاین رو براتون فراهم کنیم.
+            </p>
+
+            <p>
+                برای تکمیل ثبت‌نام و فعال‌سازی حساب کاربری‌تون، 
+                روی دکمه‌ی زیر کلیک کنید:
+            </p>
+
+            <div style="text-align: center;">
+                <a href="{{ activation_link }}" class="btn">✅ تأیید حساب کاربری</a>
+            </div>
+
+            <p style="font-size: 14px; color: #888; text-align: center;">
+                اگر دکمه کار نمی‌کنه، لینک زیر رو کپی کن توی مرورگرت بذار:
+                <br>
+                <a href="{{ activation_link }}" style="word-break: break-all;">{{ activation_link }}</a>
+            </p>
+
+            <p>
+                اگر این ایمیل رو شما درخواست نکردید، می‌تونید نادیده بگیرید.
+            </p>
+
+            <p>
+                با تشکر،<br>
+                <strong>تیم فروشگاه جنگویی</strong>
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>
+                © ۲۰۲۶ فروشگاه جنگویی — تمامی حقوق محفوظ است.
+                <br>
+                <a href="#">وب‌سایت</a> • 
+                <a href="#">پشتیبانی</a> • 
+                <a href="#">حریم خصوصی</a>
+            </p>
+        </div>
+
+    </div>
+
+</body>
+</html>

@@ -123,3 +123,56 @@ def send_templated_email(subject, template_name, context, recipient_list):
     except Exception as e:
         logger.error(f"خطا در ارسال ایمیل قالبی: {str(e)}")
         return False
+    
+
+# app_email/utils.py
+
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def send_welcome_email(user_email, user_name, activation_link):
+    """
+    ارسال ایمیل خوش‌آمدگویی با قالب HTML
+    
+    پارامترها:
+    - user_email: ایمیل کاربر
+    - user_name: اسم کاربر
+    - activation_link: لینک تأیید حساب
+    """
+    subject = '🎉 به فروشگاه ما خوش آمدید!'
+    
+    # آماده‌سازی داده‌ها برای قالب
+    context = {
+        'user_name': user_name,
+        'activation_link': activation_link,
+    }
+    
+    # رندر کردن قالب HTML
+    html_content = render_to_string('email/welcome.html', context)
+    
+    # تبدیل HTML به متن ساده (برای ایمیل‌خوان‌های قدیمی)
+    text_content = strip_tags(html_content)
+    
+    from_email = settings.DEFAULT_FROM_EMAIL
+    
+    try:
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=from_email,
+            to=[user_email],
+        )
+        email.attach_alternative(html_content, "text/html")
+        email.send()
+        
+        logger.info(f"ایمیل خوش‌آمدگویی به {user_email} فرستاده شد")
+        return True
+    except Exception as e:
+        logger.error(f"خطا در ارسال ایمیل خوش‌آمدگویی: {str(e)}")
+        return False
