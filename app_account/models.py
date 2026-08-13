@@ -80,7 +80,7 @@ class UserProfile(models.Model):
     
 
 class PhoneOTP(models.Model):
-
+    """مدل OTP برای شماره تلفن"""
     phone_number = models.CharField(max_length=15, unique=True)
     otp_code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -90,23 +90,46 @@ class PhoneOTP(models.Model):
         return f"{self.phone_number} - {self.otp_code}"
     
     def is_expired(self):
-
-        expiration_time = self.created_at + timedelta(minutes=1)
+        expiration_time = self.created_at + timedelta(minutes=2)
         return timezone.now() > expiration_time
     
     @classmethod
     def generate_otp(cls):
-
         return str(random.randint(100000, 999999))
     
     @classmethod
     def create_otp(cls, phone_number):
-
         otp_code = cls.generate_otp()
-
         cls.objects.filter(phone_number=phone_number).delete()
-
         return cls.objects.create(
             phone_number=phone_number,
+            otp_code=otp_code
+        )
+
+
+class EmailOTP(models.Model):
+    """مدل OTP برای ایمیل"""
+    email = models.EmailField(unique=True)
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_verified = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return f"{self.email} - {self.otp_code}"
+    
+    def is_expired(self):
+        expiration_time = self.created_at + timedelta(minutes=2)
+        return timezone.now() > expiration_time
+    
+    @classmethod
+    def generate_otp(cls):
+        return str(random.randint(100000, 999999))
+    
+    @classmethod
+    def create_otp(cls, email):
+        otp_code = cls.generate_otp()
+        cls.objects.filter(email=email).delete()
+        return cls.objects.create(
+            email=email,
             otp_code=otp_code
         )
