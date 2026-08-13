@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'app_account',
     'app_order',
     'app_shop',
+    'app_email',
 ]
 
 REST_FRAMEWORK = {
@@ -142,3 +143,31 @@ else:
     CORS_ALLOWED_ORIGINS = [
         'https://didikala-shop.com'
     ]
+
+# ==========================================
+# تنظیمات ارسال ایمیل (Email Settings)
+# ==========================================
+
+# ===== مرحله ۱: تست با Console (برای توسعه) =====
+# برای تست در محیط توسعه، این خط رو فعال بذار:
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+
+# ===== مرحله ۲: ارسال واقعی با Gmail (برای محیط واقعی) =====
+# وقتی می‌خوای واقعاً ایمیل بفرستی، این بخش رو از حالت کامنت خارج کن
+# و خط EMAIL_BACKEND بالا رو کامنت کن.
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'imreybyrey@gmail.com'  # ایمیل Gmail خودت رو بذار
+EMAIL_HOST_PASSWORD = 'cdyyfdebmdoserbh'  # App Password ۱۶ رقمی بدون فاصله
+
+
+# ===== تنظیمات پیش‌فرض =====
+# این آدرس به عنوان فرستنده‌ی پیش‌فرض استفاده میشه
+DEFAULT_FROM_EMAIL = 'imreybyrey@gmail.com'  # همون ایمیل Gmail خودت
+
+# ایمیل مدیر برای دریافت گزارشات (اختیاری)
+ADMIN_EMAIL = 'imreybyrey@gmail.com'
