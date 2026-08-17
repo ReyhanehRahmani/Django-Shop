@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from app_account.models import UserProfile, Address, UserFavorite , PhoneOTP
+from app_account.models import UserProfile, Address, UserFavorite , PhoneOTP , EmailOTP
 from app_shop.models import ProductColor
 from app_order.models import Order, Cart
 
@@ -189,20 +189,65 @@ class UserFavoriteRequestBodySerializer(serializers.Serializer):
 
 
 class PhoneNumberSerializer(serializers.Serializer):
-    """سریالایزر دریافت شماره تلفن برای ارسال کد"""
-    phone_number = serializers.CharField(max_length=15)
-    
-    def validate_phone_number(self, value):
-        """اعتبارسنجی شماره تلفن"""
+
+    phone_number = serializers.CharField()
+
+    def validate_phone_number(self , value):
+
+        if not value:
+            raise serializers.ValidationError("شماره تلفن نمی تواند خالی باشد")
+        
         if not value.isdigit():
             raise serializers.ValidationError("شماره تلفن باید فقط شامل اعداد باشد.")
-        if len(value) < 10:
-            raise serializers.ValidationError("شماره تلفن معتبر نیست.")
+         
+        if len(value) != 11 or value[0] != "0" or value[1] != "9":
+            raise serializers.ValidationError("شماره تلفن معتبر نیست.")   
+             
         return value
+    
+
+class EmailSerializer(serializers.Serializer):
+
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not value:
+            raise serializers.ValidationError("ایمیل نمی‌تواند خالی باشد.")
+        
+        return value
+    
+
+class PhoneOTPSerializer(serializers.ModelSerializer):
+    """سریالایزر برای مدل PhoneOTP"""
+    
+    class Meta:
+        model = PhoneOTP
+        fields = ['id', 'phone_number', 'otp_code', 'created_at', 'is_verified']
+        read_only_fields = ['id', 'otp_code', 'created_at', 'is_verified']
+        # چرا read_only؟ چون کاربر نباید بتونه اینا رو تغییر بده
 
 
-class VerifyOTPSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(max_length=15)
-    otp_code = serializers.CharField(max_length=6)
+class EmailOTPSerializer(serializers.ModelSerializer):
+    """سریالایزر برای مدل EmailOTP"""
+    
+    class Meta:
+        model = EmailOTP
+        fields = ['id', 'email', 'otp_code', 'created_at', 'is_verified']
+        read_only_fields = ['id', 'otp_code', 'created_at', 'is_verified']
+    
+
+class UserRegistrationSerializer(serializers.Serializer):
+    
     username = serializers.CharField(max_length=150)
-    password = serializers.CharField(max_length=128)
+    password = serializers.CharField(max_length=128, write_only=True)
+    verification_token = serializers.CharField()
+    
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("این نام کاربری قبلاً ثبت شده است.")
+        return value
+    
+    def validate_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError("رمز عبور باید حداقل ۸ کاراکتر باشد.")
+        return value

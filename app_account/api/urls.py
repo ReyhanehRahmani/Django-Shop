@@ -26,9 +26,13 @@ urlpatterns = [
     path('profile/delete/', views.UserProfileDeleteView.as_view(), name='profile-delete'),
     path('addresses/', views.AddressListView.as_view(), name='address-list-create'),
     path('addresses/<int:pk>/', views.AddressDetailView.as_view(), name='address-detail'),
-    # ===== Register APIs =====
-    path('send-otp/', views.send_otp, name='send-otp'),
-    path('verify-otp/', views.verify_otp, name='verify-otp'),
-    path('resend-otp/', views.resend_otp, name='resend-otp'),
+    
+    # ===== OTP =====
+    path('send-phone-otp/', views.SendPhoneOTPView.as_view()),
+    path('send-email-otp/', views.SendEmailOTPView.as_view()),
+    
+    # ===== تایید OTP و ثبت‌نام (دو مرحله‌ای) =====
+    path('verify-otp/', views.VerifyOTPView.as_view()),
+    path('register/', views.UserRegistrationView.as_view()), 
     ]
 

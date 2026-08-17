@@ -1,9 +1,7 @@
-from rest_framework.response import Response
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from app_account.models import UserFavorite , UserProfile , Address , PhoneOTP
+from app_account.models import UserFavorite , UserProfile , Address
 from django.contrib.contenttypes.models import ContentType
-from rest_framework.generics import RetrieveAPIView
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework import status
@@ -12,6 +10,21 @@ from drf_yasg import openapi
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
+from rest_framework.generics import RetrieveAPIView, CreateAPIView, UpdateAPIView, DestroyAPIView , ListCreateAPIView , RetrieveUpdateDestroyAPIView
+from rest_framework.views import APIView
+import random
+import jwt
+from django.conf import settings
+from datetime import datetime, timedelta
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from django.contrib.auth.models import User
+from django.utils import timezone
+from app_account.models import PhoneOTP, EmailOTP
+from app_email.utils import send_simple_email
+
 from app_account.api.serializers import (
     UserFavoriteSerializer, 
     UserFavoriteRequestBodySerializer,
@@ -19,13 +32,14 @@ from app_account.api.serializers import (
     UserProfileCreateUpdateSerializer,
     AddressSerializer,
     AddressCreateUpdateSerializer,
+    EmailSerializer,
+    EmailOTPSerializer,
     PhoneNumberSerializer,
-    VerifyOTPSerializer,
-    UserProfileCreateUpdateSerializer,
-)
-from rest_framework.generics import RetrieveAPIView, CreateAPIView, UpdateAPIView, DestroyAPIView , ListCreateAPIView , RetrieveUpdateDestroyAPIView
-from rest_framework.views import APIView
-import random
+    PhoneOTPSerializer,
+    UserRegistrationSerializer,
+    UserProfileCreateUpdateSerializer,)
+
+
 
 @api_view()
 @authentication_classes([JWTAuthentication])
@@ -211,122 +225,279 @@ class AddressDetailView(RetrieveUpdateDestroyAPIView):
             raise NotFound(f'آدرس شماره {index} یافت نشد.')
         
 
-# ======================ثبت نام+=================
+class SendEmailOTPView(APIView):
+    """
+    ارسال کد تایید به ایمیل (هم برای بار اول و هم ارسال مجدد)
+    """
+    permission_classes = [AllowAny]
 
-@api_view(['POST'])
-def send_otp(request):
-    serializer = PhoneNumberSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    phone_number = serializer.validated_data['phone_number']
-    otp_obj = PhoneOTP.create_otp(phone_number)
-    
-    print(f"{phone_number}: {otp_obj.otp_code}")
-    
-    return Response({
-        'status': 'ok',
-        'message': 'کد تایید با موفقیت ارسال شد.',
-        'phone_number': phone_number
-    }, status=status.HTTP_200_OK)
+    def post(self, request):
+        serializer = EmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+
+        # بررسی OTP قبلی
+        try:
+            otp_instance = EmailOTP.objects.get(email=email)
+            
+            if otp_instance.is_verified:
+                return Response(
+                    {"detail": "این ایمیل قبلاً تایید شده است."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # اگر هنوز منقضی نشده، خطا بده
+            if not otp_instance.is_expired():
+                remaining = int((otp_instance.created_at + timedelta(minutes=2) - timezone.now()).total_seconds())
+                return Response(
+                    {
+                        "detail": f"کد قبلی هنوز معتبر است. {remaining} ثانیه دیگر تلاش کنید.",
+                        "remaining_seconds": remaining
+                    },
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+            
+            # ساخت OTP جدید
+            otp_instance = EmailOTP.create_otp(email)
+            
+        except EmailOTP.DoesNotExist:
+            otp_instance = EmailOTP.create_otp(email)
+
+        # ارسال ایمیل
+        email_sent = send_simple_email(
+            subject="کد تایید ورود",
+            message=f"کد تایید شما: {otp_instance.otp_code}\nاین کد تا ۲ دقیقه دیگر معتبر است.",
+            recipient_list=[email],
+        )
+
+        if not email_sent:
+            return Response(
+                {"detail": "ارسال ایمیل با خطا مواجه شد."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        return Response(
+            {"detail": "کد تایید به ایمیل شما ارسال شد.", "email": email},
+            status=status.HTTP_200_OK
+        )
 
 
-@api_view(['POST'])
-def resend_otp(request):
-    serializer = PhoneNumberSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class SendPhoneOTPView(APIView):
+    """
+    ارسال کد تایید به شماره تلفن (هم برای بار اول و هم ارسال مجدد)
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PhoneNumberSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        phone_number = serializer.validated_data['phone_number']
+
+        # بررسی OTP قبلی
+        try:
+            otp_instance = PhoneOTP.objects.get(phone_number=phone_number)
+            
+            if otp_instance.is_verified:
+                return Response(
+                    {"detail": "این شماره تلفن قبلاً تایید شده است."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # اگر هنوز منقضی نشده، خطا بده
+            if not otp_instance.is_expired():
+                remaining = int((otp_instance.created_at + timedelta(minutes=2) - timezone.now()).total_seconds())
+                return Response(
+                    {
+                        "detail": f"کد قبلی هنوز معتبر است. {remaining} ثانیه دیگر تلاش کنید.",
+                        "remaining_seconds": remaining
+                    },
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+            
+            # ساخت OTP جدید
+            otp_instance = PhoneOTP.create_otp(phone_number)
+            
+        except PhoneOTP.DoesNotExist:
+            otp_instance = PhoneOTP.create_otp(phone_number)
+
+        # ===== در محیط واقعی اینجا SMS ارسال کن =====
+        # فعلاً در ترمینال چاپ میشه
+        print(f"📱 کد OTP برای {phone_number}: {otp_instance.otp_code}")
+
+        return Response(
+            {"detail": "کد تایید به شماره تلفن شما ارسال شد.", "phone_number": phone_number},
+            status=status.HTTP_200_OK
+        )
     
-    phone_number = serializer.validated_data['phone_number']
     
-    try:
-        otp_obj = PhoneOTP.objects.get(phone_number=phone_number)
-        if otp_obj.is_verified:
-            return Response({
-                'status': 'not ok',
-                'message': 'شماره تلفن قبلاً تایید شده است.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        otp_obj = PhoneOTP.create_otp(phone_number)
-        print(f"{phone_number}: {otp_obj.otp_code}")
-        
+class VerifyOTPView(APIView):
+    """
+    تایید کد OTP و برگرداندن توکن موقت برای مرحله بعد
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        otp_code = request.data.get('otp_code')
+        phone_number = request.data.get('phone_number')
+        email = request.data.get('email')
+
+        if not otp_code:
+            return Response(
+                {"detail": "کد تایید الزامی است."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not phone_number and not email:
+            return Response(
+                {"detail": "شماره تلفن یا ایمیل الزامی است."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if phone_number and email:
+            return Response(
+                {"detail": "فقط یکی از شماره تلفن یا ایمیل را وارد کنید."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ===== تایید OTP =====
+        if phone_number:
+            try:
+                otp_instance = PhoneOTP.objects.get(phone_number=phone_number)
+            except PhoneOTP.DoesNotExist:
+                return Response(
+                    {"detail": "شماره تلفن یافت نشد."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            try:
+                otp_instance = EmailOTP.objects.get(email=email)
+            except EmailOTP.DoesNotExist:
+                return Response(
+                    {"detail": "ایمیل یافت نشد."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        if otp_instance.is_expired():
+            return Response(
+                {"detail": "کد تایید منقضی شده است."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if otp_instance.otp_code != otp_code:
+            return Response(
+                {"detail": "کد تایید اشتباه است."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # ===== علامت‌گذاری به عنوان تایید شده =====
+        otp_instance.is_verified = True
+        otp_instance.save()
+
+        # ===== ساخت توکن موقت (برای مرحله ثبت‌نام) =====
+        verification_token = jwt.encode(
+            {
+                'phone_number': phone_number,
+                'email': email,
+                'exp': datetime.utcnow() + timedelta(minutes=5)  # ۵ دقیقه اعتبار
+            },
+            settings.SECRET_KEY,
+            algorithm='HS256'
+        )
+
         return Response({
-            'status': 'ok',
-            'message': 'کد جدید با موفقیت ارسال شد.',
-            'phone_number': phone_number
+            "status": "ok",
+            "message": "کد تایید شد.",
+            "verification_token": verification_token,  # ✅ فقط همینو برگردون
+            "phone_number": phone_number,
+            "email": email
         }, status=status.HTTP_200_OK)
-        
-    except PhoneOTP.DoesNotExist:
-        return Response({
-            'status': 'not ok',
-            'message': 'شماره تلفن یافت نشد. ابتدا درخواست کد کنید.'
-        }, status=status.HTTP_404_NOT_FOUND)
 
 
-@api_view(['POST'])
-def verify_otp(request):
+class UserRegistrationView(APIView):
     """
-    تایید کد + ساخت کاربر + برگرداندن توکن
+    ساخت کاربر جدید با توکن تایید
     """
-    serializer = VerifyOTPSerializer(data=request.data)
-    
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    phone_number = serializer.validated_data['phone_number']
-    otp_code = serializer.validated_data['otp_code']
-    
-    try:
-        otp_obj = PhoneOTP.objects.get(phone_number=phone_number)
-    except PhoneOTP.DoesNotExist:
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        username = serializer.validated_data['username']
+        password = serializer.validated_data['password']
+        verification_token = serializer.validated_data['verification_token']
+
+        # ===== اعتبارسنجی توکن =====
+        try:
+            payload = jwt.decode(
+                verification_token,
+                settings.SECRET_KEY,
+                algorithms=['HS256']
+            )
+        except jwt.ExpiredSignatureError:
+            return Response(
+                {"detail": "توکن منقضی شده است. دوباره کد تایید بگیرید."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except jwt.InvalidTokenError:
+            return Response(
+                {"detail": "توکن نامعتبر است."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        phone_number = payload.get('phone_number')
+        email = payload.get('email')
+
+        # ===== بررسی اینکه OTP تایید شده باشه =====
+        if phone_number:
+            try:
+                otp_instance = PhoneOTP.objects.get(phone_number=phone_number)
+                if not otp_instance.is_verified:
+                    return Response(
+                        {"detail": "کد تایید نشده است."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except PhoneOTP.DoesNotExist:
+                return Response(
+                    {"detail": "شماره تلفن یافت نشد."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # ساخت کاربر (بدون ایمیل)
+            user = User.objects.create_user(
+                username=username,
+                password=password
+            )
+            
+        else:  # email
+            try:
+                otp_instance = EmailOTP.objects.get(email=email)
+                if not otp_instance.is_verified:
+                    return Response(
+                        {"detail": "کد تایید نشده است."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except EmailOTP.DoesNotExist:
+                return Response(
+                    {"detail": "ایمیل یافت نشد."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # ساخت کاربر با ایمیل
+            user = User.objects.create_user(
+                username=username,
+                password=password,
+                email=email
+            )
+
+        # ===== ساخت توکن JWT نهایی =====
+        refresh = RefreshToken.for_user(user)
+
         return Response({
-            'status': 'not ok',
-            'message': 'شماره تلفن یافت نشد.'
-        }, status=status.HTTP_404_NOT_FOUND)
-    
-    if otp_obj.is_expired():
-        return Response({
-            'status': 'not ok',
-            'message': 'کد تایید منقضی شده است.'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    if otp_obj.otp_code != otp_code:
-        return Response({
-            'status': 'not ok',
-            'message': 'کد تایید اشتباه است.'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    otp_obj.is_verified = True
-    otp_obj.save()
-    
-    username = request.data.get('username')
-    password = request.data.get('password')
-    
-    if not username or not password:
-        return Response({
-            'status': 'not ok',
-            'message': 'نام کاربری و رمز عبور الزامی است.'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    if User.objects.filter(username=username).exists():
-        return Response({
-            'status': 'not ok',
-            'message': 'این نام کاربری قبلاً ثبت شده است.'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    user = User.objects.create_user(
-        username=username,
-        password=password,
-        email=request.data.get('email', '')
-    )
-    
-    refresh = RefreshToken.for_user(user)
-    
-    return Response({
-        'status': 'ok',
-        'message': 'شماره تلفن تایید شد و کاربر ساخته شد.',
-        'user_id': user.id,
-        'username': user.username,
-        'access': str(refresh.access_token),
-        'refresh': str(refresh)
-    }, status=status.HTTP_200_OK)
+            "status": "ok",
+            "message": "کاربر با موفقیت ساخته شد.",
+            "user_id": user.id,
+            "username": user.username,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh)
+        }, status=status.HTTP_200_OK)

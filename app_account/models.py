@@ -2,9 +2,9 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
-import random
 from django.utils import timezone
 from datetime import timedelta
+import random
 
 
 class UserFavorite(models.Model):
